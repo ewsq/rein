@@ -12,3 +12,5 @@
 *.out
 
 release/*
+.git
+.idea

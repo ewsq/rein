@@ -47,13 +47,15 @@ func (obj coroutineStreamObj) getClientConn(destServer string) *net.TCPConn {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", destServer)
 	if err != nil {
 		log.Println(fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error()))
-		os.Exit(1)
+		//os.Exit(1)
+		return nil;
 	}
 
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
 		log.Println(fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error()))
-		os.Exit(1)
+		//os.Exit(1)
+		return nil;
 	}
 	log.Println("getClientConn ok")
 	return conn
@@ -80,21 +82,28 @@ func (obj coroutineStreamObj) orgiConnReadProducter(orgiConn net.Conn, bufferLen
 func (obj coroutineStreamObj) clientConnReadProducter(clientConn *net.TCPConn, bufferLen int, channel chan<- chanEle) {
 	for {
 		buffer := make([]byte, bufferLen)
-		n, err := clientConn.Read(buffer)
-		ce := chanEle{1, n, string(buffer[:n])}
-		channel <- ce
-
-		if err != nil {
-			clientConn.Close()
-			log.Println("clientConn:", fmt.Sprintf("%0x", &clientConn), " close.")
-			ce := chanEle{-1, 0, ""}
+		if clientConn!=nil {
+			n, err := clientConn.Read(buffer)
+			ce := chanEle{1, n, string(buffer[:n])}
 			channel <- ce
+
+			if err != nil {
+				clientConn.Close()
+				log.Println("clientConn:", fmt.Sprintf("%0x", &clientConn), " close.")
+				ce := chanEle{-1, 0, ""}
+				channel <- ce
+				return
+			}
+		}else{
 			return
 		}
 	}
 }
 
 func (obj coroutineStreamObj) consumerDeal(orgiConn net.Conn, clientConn *net.TCPConn, channel <-chan chanEle) {
+	if clientConn==nil {
+		return
+	}
 	for {
 		ce := <-channel
 		strLen := strconv.Itoa(strings.Count(ce.bf, ""))
